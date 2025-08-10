@@ -1,0 +1,421 @@
+% redlogo_report_no_builtin.tex
+% LaTeX report for the image-processing assignment (no-builtins Python version).
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{courier}
+\usepackage{titlesec}
+\usepackage{enumitem}
+
+% Listing (code) setup
+\lstset{
+  basicstyle=\footnotesize\ttfamily,
+  breaklines=true,
+  numbers=left,
+  numberstyle=\tiny,
+  frame=single,
+  captionpos=b,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{teal},
+  showstringspaces=false
+}
+
+% Title
+\title{EE604 H1}
+\author{LOHIT P TALAVAR \\ 210564 \\ lohitpt21@iitk.ac.in}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\clearpage
+
+
+\section{Results and short code snippets}
+
+\subsection{Transpose}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{redlogo_transpose.png}
+  \caption{Transpose of the original image (rows $\leftrightarrow$ columns).}
+\end{figure}
+\begin{lstlisting}[language=Python, caption=Manual transpose snippet]
+# For each (i,j) in HxW assign pixel -> (j,i)
+out = zeros((W,H,3), dtype=uint8)
+for i in range(H):
+  for j in range(W):
+    out[j,i,0] = arr[i,j,0]
+    out[j,i,1] = arr[i,j,1]
+    out[j,i,2] = arr[i,j,2]
+\end{lstlisting}
+
+\clearpage
+\subsection{Rotate clockwise by 90\textdegree}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{redlogo_rot90_cw.png}
+  \caption{Original image rotated 90 degrees clockwise.}
+\end{figure}
+\begin{lstlisting}[language=Python, caption=Manual 90° CW rotation snippet]
+# (i, j) -> (j, H-1-i)
+out = zeros((W,H,3), dtype=uint8)
+for i in range(H):
+  for j in range(W):
+    ni = j
+    nj = H - 1 - i
+    out[ni,nj,:] = arr[i,j,:]
+\end{lstlisting}
+
+\clearpage
+\subsection{Grayscale (average over channels)}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{redlogo_grayscale_avg.png}
+  \caption{Grayscale obtained by integer average of R, G, B.}
+\end{figure}
+\begin{lstlisting}[language=Python, caption=Manual average grayscale snippet]
+# avg = (r + g + b) // 3
+out = zeros((H,W), dtype=uint8)
+for i in range(H):
+  for j in range(W):
+    r,g,b = arr[i,j,0], arr[i,j,1], arr[i,j,2]
+    out[i,j] = (int(r) + int(g) + int(b)) // 3
+\end{lstlisting}
+
+\clearpage
+\subsection{Flip horizontally}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{redlogo_flip_horizontal.png}
+  \caption{Horizontally flipped (mirror) image.}
+\end{figure}
+\begin{lstlisting}[language=Python, caption=Manual horizontal flip snippet]
+# mirror columns: (i,j) -> (i, W-1-j)
+out = zeros_like(arr)
+for i in range(H):
+  for j in range(W):
+    out[i, W-1-j, :] = arr[i,j,:]
+\end{lstlisting}
+
+\clearpage
+\subsection{Change logo color to green}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{redlogo_green_logo.png}
+  \caption{Recolor red-like pixels to pure green by threshold mask.}
+\end{figure}
+\begin{lstlisting}[language=Python, caption=Manual recolor-to-green snippet]
+# simple red threshold: r >= 100, g <= 100, b <= 100
+mask = zeros((H,W), dtype=bool)
+for i in range(H):
+  for j in range(W):
+    r,g,b = arr[i,j,:]
+    if (r >= 100) and (g <= 100) and (b <= 100):
+      mask[i,j] = True
+
+out = arr.copy()
+for i in range(H):
+  for j in range(W):
+    if mask[i,j]:
+      out[i,j,:] = [0,255,0]
+\end{lstlisting}
+
+\clearpage
+\subsection{2x2 tiled image (large image)}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{redlogo_2x2_grid.png}
+  \caption{A 2x2 grid; each cell contains the original logo.}
+\end{figure}
+\begin{lstlisting}[language=Python, caption=Manual 2x2 tile snippet]
+# place each pixel into four quadrants
+out = zeros((2*H,2*W,3), dtype=uint8)
+for i in range(H):
+  for j in range(W):
+    out[i, j, :] = arr[i, j, :]
+    out[i, j+W, :] = arr[i, j, :]
+    out[i+H, j, :] = arr[i, j, :]
+    out[i+H, j+W, :] = arr[i, j, :]
+\end{lstlisting}
+
+\clearpage
+\subsection{Binary version (logo white, background black)}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{redlogo_binary.png}
+  \caption{Binary mask: white for logo pixels, black for background.}
+\end{figure}
+\begin{lstlisting}[language=Python, caption=Manual binary mask snippet]
+# using previously computed mask (boolean)
+out = zeros((H,W), dtype=uint8)
+for i in range(H):
+  for j in range(W):
+    out[i,j] = 255 if mask[i,j] else 0
+\end{lstlisting}
+
+\clearpage
+\subsection{Removed ``Three-eyed Trishul''}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{redlogo_no_trishul.png}
+  \caption{Trishul area removed by circular mask and small eye wipes (set to white).}
+\end{figure}
+\begin{lstlisting}[language=Python, caption=Manual trishul removal snippet]
+# main circle center (cx,cy), radius R:
+for i in range(H):
+  for j in range(W):
+    dx = j - cx; dy = i - cy
+    if dx*dx + dy*dy <= R*R:
+      out[i,j,:] = [255,255,255]
+
+# small eye circles: repeat for each eye center with small radius
+\end{lstlisting}
+
+\clearpage
+\section{Full Python source}
+% If the file exists in the project, include it here (recommended).
+\begin{lstlisting}[language=Python, caption=Manual 2x2 tile snippet]
+"""
+process_redlogo_no_builtin_ops.py
+
+Performs required image operations WITHOUT using high-level built-in array ops.
+Allowed libs: numpy (for allocation and dtype), PIL only for reading/writing images.
+All image transformations are implemented with explicit loops.
+
+Outputs (saved in 'outputs/' folder):
+ - redlogo_transpose.png
+ - redlogo_rot90_cw.png
+ - redlogo_grayscale_avg.png
+ - redlogo_flip_horizontal.png
+ - redlogo_green_logo.png
+ - redlogo_2x2_grid.png
+ - redlogo_binary.png
+ - redlogo_no_trishul.png
+"""
+
+import os
+import numpy as np
+from PIL import Image
+
+# ---------- Settings ----------
+INPUT_PATH = "redlogo.jpg"
+OUT_DIR = "outputs"
+os.makedirs(OUT_DIR, exist_ok=True)
+
+# color thresholds for detecting red logo (tweak if needed)
+RED_MIN = 100
+GREEN_MAX = 100
+BLUE_MAX = 100
+
+# Trishul removal params (tweak to match your image)
+TRISHUL_CENTER_X = 115  # x coordinate (columns)
+TRISHUL_CENTER_Y = 109  # y coordinate (rows)
+TRISHUL_RADIUS = 45
+
+# ---------- Helpers ----------
+def load_image_as_array(path):
+    img = Image.open(path).convert("RGB")
+    arr = np.array(img, dtype=np.uint8)
+    return arr
+
+def save_array_as_image(arr, path, mode="RGB"):
+    # arr shape: HxW or HxWx3
+    Image.fromarray(arr, mode=mode).save(path)
+    print("Saved", path)
+
+# ---------- Implementations without high-level built-ins ----------
+
+def transpose_image_manual(arr):
+    H, W = arr.shape[0], arr.shape[1]
+    out = np.zeros((W, H, 3), dtype=np.uint8)  # transposed shape
+    for i in range(H):
+        for j in range(W):
+            # place pixel (i,j) -> (j,i)
+            out[j, i, 0] = arr[i, j, 0]
+            out[j, i, 1] = arr[i, j, 1]
+            out[j, i, 2] = arr[i, j, 2]
+    return out
+
+def rotate_90_cw_manual(arr):
+    # rotation: (i, j) -> (j, H-1-i)
+    H, W = arr.shape[0], arr.shape[1]
+    out = np.zeros((W, H, 3), dtype=np.uint8)
+    for i in range(H):
+        for j in range(W):
+            ni = j
+            nj = H - 1 - i
+            out[ni, nj, 0] = arr[i, j, 0]
+            out[ni, nj, 1] = arr[i, j, 1]
+            out[ni, nj, 2] = arr[i, j, 2]
+    return out
+
+def grayscale_avg_manual(arr):
+    H, W = arr.shape[0], arr.shape[1]
+    out = np.zeros((H, W), dtype=np.uint8)
+    for i in range(H):
+        for j in range(W):
+            r = int(arr[i,j,0])
+            g = int(arr[i,j,1])
+            b = int(arr[i,j,2])
+            s = r + g + b
+            avg = s // 3   # integer average
+            out[i,j] = avg
+    return out
+
+def flip_horizontal_manual(arr):
+    H, W = arr.shape[0], arr.shape[1]
+    out = np.zeros_like(arr)
+    for i in range(H):
+        for j in range(W):
+            out[i, W - 1 - j, 0] = arr[i, j, 0]
+            out[i, W - 1 - j, 1] = arr[i, j, 1]
+            out[i, W - 1 - j, 2] = arr[i, j, 2]
+    return out
+
+def logo_mask_manual(arr, rmin=RED_MIN, gmax=GREEN_MAX, bmax=BLUE_MAX):
+    H, W = arr.shape[0], arr.shape[1]
+    mask = np.zeros((H, W), dtype=np.bool_)
+    for i in range(H):
+        for j in range(W):
+            r = int(arr[i,j,0])
+            g = int(arr[i,j,1])
+            b = int(arr[i,j,2])
+            if (r >= rmin) and (g <= gmax) and (b <= bmax):
+                mask[i,j] = True
+    return mask
+
+def recolor_to_green_manual(arr, mask):
+    H, W = arr.shape[0], arr.shape[1]
+    out = np.zeros_like(arr)
+    for i in range(H):
+        for j in range(W):
+            if mask[i,j]:
+                out[i,j,0] = 0
+                out[i,j,1] = 255
+                out[i,j,2] = 0
+            else:
+                out[i,j,0] = arr[i,j,0]
+                out[i,j,1] = arr[i,j,1]
+                out[i,j,2] = arr[i,j,2]
+    return out
+
+def tile_2x2_manual(arr):
+    H, W = arr.shape[0], arr.shape[1]
+    out = np.zeros((H*2, W*2, 3), dtype=np.uint8)
+    for i in range(H):
+        for j in range(W):
+            # top-left
+            out[i, j, :] = arr[i,j,:]
+            # top-right
+            out[i, j + W, :] = arr[i,j,:]
+            # bottom-left
+            out[i + H, j, :] = arr[i,j,:]
+            # bottom-right
+            out[i + H, j + W, :] = arr[i,j,:]
+    return out
+
+def binary_logo_manual(mask):
+    # mask: boolean HxW
+    H, W = mask.shape
+    out = np.zeros((H, W), dtype=np.uint8)
+    for i in range(H):
+        for j in range(W):
+            out[i,j] = 255 if mask[i,j] else 0
+    return out
+
+def remove_trishul_manual(arr, center_x=TRISHUL_CENTER_X, center_y=TRISHUL_CENTER_Y, radius=TRISHUL_RADIUS):
+    H, W = arr.shape[0], arr.shape[1]
+    out = np.zeros_like(arr)
+    # start by copying original
+    for i in range(H):
+        for j in range(W):
+            out[i,j,0] = arr[i,j,0]
+            out[i,j,1] = arr[i,j,1]
+            out[i,j,2] = arr[i,j,2]
+    radius2 = radius * radius
+    # remove main circular region
+    for i in range(H):
+        for j in range(W):
+            dx = j - center_x
+            dy = i - center_y
+            dist2 = dx*dx + dy*dy
+            if dist2 <= radius2:
+                out[i,j,0] = 255
+                out[i,j,1] = 255
+                out[i,j,2] = 255
+    # remove three small eyes by small circular wipes (offsets relative to center)
+    eye_offsets = [(-8, -6), (0, -9), (8, -6)]   # tweak if necessary
+    eye_radius = max(3, radius // 8)
+    eye_r2 = eye_radius * eye_radius
+    for ex_off, ey_off in eye_offsets:
+        ex = center_x + ex_off
+        ey = center_y + ey_off
+        for i in range(H):
+            for j in range(W):
+                dx = j - ex
+                dy = i - ey
+                if dx*dx + dy*dy <= eye_r2:
+                    out[i,j,0] = 255
+                    out[i,j,1] = 255
+                    out[i,j,2] = 255
+    return out
+
+# ---------- Main ----------
+def main():
+    if not os.path.exists(INPUT_PATH):
+        raise FileNotFoundError("Place 'redlogo.jpg' in the same folder as this script or update INPUT_PATH.")
+    arr = load_image_as_array(INPUT_PATH)
+    H, W = arr.shape[0], arr.shape[1]
+    print("Loaded image:", INPUT_PATH, "size:", W, "x", H)
+
+    # 1) Transpose
+    trans = transpose_image_manual(arr)
+    save_array_as_image(trans, os.path.join(OUT_DIR, "redlogo_transpose.png"))
+
+    # 2) Rotate 90 CW
+    rot90 = rotate_90_cw_manual(arr)
+    save_array_as_image(rot90, os.path.join(OUT_DIR, "redlogo_rot90_cw.png"))
+
+    # 3) Grayscale (average)
+    gray = grayscale_avg_manual(arr)
+    save_array_as_image(gray, os.path.join(OUT_DIR, "redlogo_grayscale_avg.png"), mode="L")
+
+    # 4) Flip horizontally
+    flipped = flip_horizontal_manual(arr)
+    save_array_as_image(flipped, os.path.join(OUT_DIR, "redlogo_flip_horizontal.png"))
+
+    # 5) Change logo color to green
+    mask = logo_mask_manual(arr)
+    green = recolor_to_green_manual(arr, mask)
+    save_array_as_image(green, os.path.join(OUT_DIR, "redlogo_green_logo.png"))
+
+    # 6) 2x2 grid
+    tiled = tile_2x2_manual(arr)
+    save_array_as_image(tiled, os.path.join(OUT_DIR, "redlogo_2x2_grid.png"))
+
+    # 7) Binary version
+    binary = binary_logo_manual(mask)
+    save_array_as_image(binary, os.path.join(OUT_DIR, "redlogo_binary.png"), mode="L")
+
+    # 8) Remove trishul
+    removed = remove_trishul_manual(arr)
+    save_array_as_image(removed, os.path.join(OUT_DIR, "redlogo_no_trishul.png"))
+
+    print("All done. Outputs are in:", OUT_DIR)
+
+if __name__ == "__main__":
+    main()
+
+\end{lstlisting}
+
+\clearpage
+
+
+\end{document}
