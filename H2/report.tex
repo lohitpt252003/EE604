@@ -1,0 +1,178 @@
+% mask_report.tex
+% LaTeX report for binary mask generation (EE604-style, similar to provided template).
+% Compile with: pdflatex mask_report.tex
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{courier}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{booktabs}
+
+% Listing (code) setup
+\lstset{
+  basicstyle=\footnotesize\ttfamily,
+  breaklines=true,
+  numbers=left,
+  numberstyle=\tiny,
+  frame=single,
+  captionpos=b,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{teal},
+  showstringspaces=false
+}
+
+% Title
+\title{EE604 H2 \\ Binary Mask Generation}
+\author{LOHIT P TALAVAR \\ 210564 \\ \texttt{lohitpt21@iitk.ac.in}}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\clearpage
+
+
+\clearpage
+\section{Results (visual)}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\textwidth]{mask_binary.png}
+  \caption{Generated binary mask saved as \texttt{mask\_binary.png}.}
+  \label{fig:mask}
+\end{figure}
+
+
+\clearpage
+\section{Key code (make\_mask.py)}
+\begin{lstlisting}[language=Python, caption=make mask.py]
+#!/usr/bin/env python3
+"""
+make_mask.py
+Generate a binary mask and save as mask_binary.png.
+"""
+import argparse
+import numpy as np
+from PIL import Image
+
+def clamp(v, lo, hi):
+    return max(lo, min(v, hi))
+
+def make_mask(r=50, img_size=None):
+    if img_size is None:
+        img_size = 8 * r
+    img_size = max(img_size, 4 * r + 10)
+    mask = np.zeros((img_size, img_size), dtype=np.uint8)
+    cx, cy = img_size // 2, img_size // 2
+
+    outer_x1, outer_x2 = cx - r, cx + r
+    outer_y1, outer_y2 = cy - r, cy + r
+    inner_x1, inner_x2 = cx - r // 2, cx + r // 2
+    inner_y1, inner_y2 = cy - r // 2, cy + r // 2
+
+    # Fill outer rectangle
+    x0 = clamp(outer_x1, 0, img_size - 1)
+    x1 = clamp(outer_x2, 0, img_size - 1)
+    y0 = clamp(outer_y1, 0, img_size - 1)
+    y1 = clamp(outer_y2, 0, img_size - 1)
+    for y in range(y0, y1 + 1):
+        mask[y, x0:x1 + 1] = 255
+
+    # Cut out inner rectangle
+    ix0 = clamp(inner_x1, 0, img_size - 1)
+    ix1 = clamp(inner_x2, 0, img_size - 1)
+    iy0 = clamp(inner_y1, 0, img_size - 1)
+    iy1 = clamp(inner_y2, 0, img_size - 1)
+    for y in range(iy0, iy1 + 1):
+        mask[y, ix0:ix1 + 1] = 0
+
+    # Left triangle ear
+    for y in range(y0, y1 + 1):
+        if y <= cy:
+            dy = y - outer_y1
+        else:
+            dy = outer_y2 - y
+        dx = int(round((dy / max(1, r)) * r))
+        sx = clamp(outer_x1 - dx, 0, img_size - 1)
+        ex = clamp(outer_x1, 0, img_size - 1)
+        mask[y, sx:ex + 1] = 255
+
+    # Right triangle ear
+    for y in range(y0, y1 + 1):
+        if y <= cy:
+            dy = y - outer_y1
+        else:
+            dy = outer_y2 - y
+        dx = int(round((dy / max(1, r)) * r))
+        sx = clamp(outer_x2, 0, img_size - 1)
+        ex = clamp(outer_x2 + dx, 0, img_size - 1)
+        mask[y, sx:ex + 1] = 255
+
+    # Top hollow semicircle (centered at (cx, outer_y1))
+    rad = r
+    rad_inner = max(1, r // 2)
+    ty0 = clamp(outer_y1 - rad, 0, img_size - 1)
+    ty1 = clamp(outer_y1, 0, img_size - 1)
+    tx0 = clamp(outer_x1, 0, img_size - 1)
+    tx1 = clamp(outer_x2, 0, img_size - 1)
+    for y in range(ty0, ty1 + 1):
+        for x in range(tx0, tx1 + 1):
+            eq_outer = ((x - cx) ** 2) / (rad ** 2) + ((y - outer_y1) ** 2) / (rad ** 2)
+            eq_inner = ((x - cx) ** 2) / (rad_inner ** 2) + ((y - outer_y1) ** 2) / (rad_inner ** 2)
+            if eq_outer <= 1.0 and eq_inner >= 1.0:
+                mask[y, x] = 255
+
+    # Bottom hollow semicircle (centered at (cx, outer_y2))
+    by0 = clamp(outer_y2, 0, img_size - 1)
+    by1 = clamp(outer_y2 + rad, 0, img_size - 1)
+    bx0 = clamp(outer_x1, 0, img_size - 1)
+    bx1 = clamp(outer_x2, 0, img_size - 1)
+    for y in range(by0, by1 + 1):
+        for x in range(bx0, bx1 + 1):
+            eq_outer = ((x - cx) ** 2) / (rad ** 2) + ((y - outer_y2) ** 2) / (rad ** 2)
+            eq_inner = ((x - cx) ** 2) / (rad_inner ** 2) + ((y - outer_y2) ** 2) / (rad_inner ** 2)
+            if eq_outer <= 1.0 and eq_inner >= 1.0:
+                mask[y, x] = 255
+
+    return mask
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--r", type=int, default=50, help="scale parameter r")
+    parser.add_argument("--out", type=str, default="mask_binary.png", help="output filename")
+    args = parser.parse_args()
+
+    r = max(1, args.r)
+    mask = make_mask(r=r)
+    Image.fromarray(mask).save(args.out)
+
+    # print proof (optional)
+    fg = int(np.count_nonzero(mask))
+    total = mask.size
+    coords = np.argwhere(mask)
+    if coords.size > 0:
+        ymin, xmin = coords.min(axis=0)
+        ymax, xmax = coords.max(axis=0)
+        width = int(xmax - xmin + 1)
+        height = int(ymax - ymin + 1)
+    else:
+        ymin = xmin = width = height = 0
+    coverage = 100.0 * fg / total if total else 0.0
+    print(f"Saved image to: {args.out}")
+    print(f"r = {r}")
+    print(f"Image size: {mask.shape[1]} x {mask.shape[0]}")
+    print(f"Foreground pixels: {fg}")
+    print(f"Bounding box (xmin, ymin, width, height): ({xmin}, {ymin}, {width}, {height})")
+    print(f"Coverage: {coverage:.3f}%")
+\end{lstlisting}
+
+
+
+\end{document}
